@@ -66,22 +66,24 @@ void VideoChannel::video_play() {
 void VideoChannel::packet_decode(AVPacket *packet) {
 
     int ret = 0;
+
+    // LOGD("packet sent ready to receive frame");
     // 发送到ffmpeg的缓冲区
     ret = avcodec_send_packet(codecContext, packet);
     if (ret < 0) {
         LOGE("avcodec_send_packet failed ret:%d\n", ret);
-
         av_packet_unref(packet);
         release_av_packet(&packet);
         return;
     }
 
-    LOGD("packet sent ready to receive frame");
+
     AVFrame *frame = av_frame_alloc();
     ret = avcodec_receive_frame(codecContext, frame);
     if (ret == AVERROR(EAGAIN)) {
         // 如果B帧参考后面的数据失败, 可能是P帧还没有出来, 就会出现这个错误
         LOGE("B frame error");
+        return;
     } else if (ret != 0) {
         if (frame) {
             LOGE("frame get error");
@@ -92,7 +94,7 @@ void VideoChannel::packet_decode(AVPacket *packet) {
 
     frames.insert_to_queue(frame);
 
-    LOGD("frame been insert");
+    // LOGD("frame been insert");
 }
 
 // read file的消费者, 同时是play的生产者, 双重身份.

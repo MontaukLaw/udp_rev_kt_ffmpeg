@@ -12,7 +12,7 @@ jint JNI_OnLoad(JavaVM *vm, void *args) {
 }
 
 void render_callback(uint8_t *data, int linesize, int width, int height) {
-    LOGD("rend");
+    // LOGD("rend");
     // 渲染
     pthread_mutex_lock(&mutex);
     if (!window) {

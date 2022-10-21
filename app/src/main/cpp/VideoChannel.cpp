@@ -133,7 +133,9 @@ void VideoChannel::video_decode() {
         // 将这一帧放入frames队列中
         frames.insert_to_queue(frame);
 
-        av_packet_unref(packet);
+        // av_freep(packet->data);
+        // av_packet_free_side_data(packet);
+        // av_packet_unref(packet);
         // 把自己的packet释放掉, 避免内存泄漏
         release_av_packet(&packet);
         // av_packet_unref(packet);

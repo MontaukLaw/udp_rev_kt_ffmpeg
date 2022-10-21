@@ -189,6 +189,24 @@ UDP_Receiver::UDP_Receiver(JavaVM *jvm, JNIEnv *env, jobject const &instance, H2
 
 void UDP_Receiver::insert_data_into_players_packet_queue(char *data, int dataLen) {
     if (this->ifStartRender) {
+        AVPacket *packet = av_packet_alloc();
+        //packet->data = (uint8_t *) av_malloc(dataLen);
+        packet->data = (uint8_t *) data;
+        // memcpy(packet->data, data, dataLen);
+        packet->size = dataLen;
+        packet->stream_index = 0;
+
+
+        this->player->videoChannel->packet_decode(packet);
+
+        av_packet_unref(packet);
+        av_packet_free(&packet);
+        packet = nullptr;
+    }
+}
+
+void UDP_Receiver::insert_data_into_players_packet_queue_old(char *data, int dataLen) {
+    if (this->ifStartRender) {
 
         // LOGD("insert data into video channel packet queue");
 
@@ -210,7 +228,14 @@ void UDP_Receiver::insert_data_into_players_packet_queue(char *data, int dataLen
         if (this->player->videoChannel->packets.get_queue_size()) {
             LOGD("queue size now is %d", this->player->videoChannel->packets.get_queue_size());
         }
-        this->player->videoChannel->packets.insert_to_queue(packet);
+
+        // this->player->videoChannel->packets.insert_to_queue(packet);
+
+        this->player->videoChannel->packet_decode(packet);
+
+        av_packet_unref(packet);
+        av_packet_free(&packet);
+        packet = nullptr;
     }
 }
 

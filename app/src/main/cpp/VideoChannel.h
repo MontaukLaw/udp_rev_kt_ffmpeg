@@ -25,6 +25,7 @@ public :
 
     void setRenderCallback(RenderCallback callback);
 
+    void packet_decode(AVPacket *packet);
 };
 
 #endif //MY_APPLICATION_FFMPEG_PLAYER_VIDEOCHANNEL_H

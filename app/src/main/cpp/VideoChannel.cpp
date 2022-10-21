@@ -24,7 +24,6 @@ void VideoChannel::video_play() {
                                             SWS_BILINEAR, nullptr, nullptr, nullptr);
 
     while (isPlaying) {
-        LOGD("video_play\n");
         int ret = frames.pop_from_queue(frame);
         if (!isPlaying) {
             break;
@@ -32,7 +31,6 @@ void VideoChannel::video_play() {
         if (!ret) {
             continue;
         }
-        LOGD("video_play 2\n");
         // 格式转换, 将yuv420p转换成rgba
         sws_scale(
                 // 输入
@@ -45,14 +43,12 @@ void VideoChannel::video_play() {
 
         // native window
         // 开始渲染
-        LOGD("video_play 3\n");
         if (callback == nullptr) {
             LOGE("wtf");
         }
 
         callback(dst_data[0], dst_linesize[0], codecContext->width, codecContext->height);
 
-        LOGD("video_play 4\n");
         // 渲染完之后, 释放frame内存
         av_frame_unref(frame);
         release_av_frame(&frame);
@@ -65,6 +61,38 @@ void VideoChannel::video_play() {
     av_freep(&dst_data[0]);
     sws_freeContext(swsContext);
 
+}
+
+void VideoChannel::packet_decode(AVPacket *packet) {
+
+    int ret = 0;
+    // 发送到ffmpeg的缓冲区
+    ret = avcodec_send_packet(codecContext, packet);
+    if (ret < 0) {
+        LOGE("avcodec_send_packet failed ret:%d\n", ret);
+
+        av_packet_unref(packet);
+        release_av_packet(&packet);
+        return;
+    }
+
+    LOGD("packet sent ready to receive frame");
+    AVFrame *frame = av_frame_alloc();
+    ret = avcodec_receive_frame(codecContext, frame);
+    if (ret == AVERROR(EAGAIN)) {
+        // 如果B帧参考后面的数据失败, 可能是P帧还没有出来, 就会出现这个错误
+        LOGE("B frame error");
+    } else if (ret != 0) {
+        if (frame) {
+            LOGE("frame get error");
+            av_frame_free(&frame);
+        }
+        return;
+    }
+
+    frames.insert_to_queue(frame);
+
+    LOGD("frame been insert");
 }
 
 // read file的消费者, 同时是play的生产者, 双重身份.
@@ -163,11 +191,11 @@ void VideoChannel::start() {
 
     isPlaying = true;
 
-    packets.set_work(true);
+    // packets.set_work(true);
     // 第一个线程， 取出队列的数据包，解码成数据帧
-    pthread_create(&pid_video_decode, nullptr, task_video_decode, this);
+    // pthread_create(&pid_video_decode, nullptr, task_video_decode, this);
 
-    // frames.set_work(true);
+    frames.set_work(true);
     // 第二个线程, 取出解码后的数据进行播放
     pthread_create(&pid_video_play, nullptr, task_video_play, this);
 

@@ -9,7 +9,7 @@
     <SurfaceView
         android:id="@+id/video_surface_view"
         android:layout_width="match_parent"
-        android:layout_height="200dp"
+        android:layout_height="400dp"
         app:layout_constraintTop_toTopOf="parent" />
 
     <Button

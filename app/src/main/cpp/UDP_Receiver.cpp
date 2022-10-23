@@ -9,7 +9,27 @@ extern "C" {
 frame_type_e UDP_Receiver::get_frame_type(char *data, int packetLen) {
 
     if (if_frame_started(data)) {
-        if ((data[4] == 0x67)) {
+        if ((data[4] == 0x67 && packetLen == 20)) {
+            // LOGD("SPS frame");
+            return SPS_FRAME;
+        } else if (packetLen == 8 && (data[4] == 0x68)) {
+            // LOGD("PPS frame");
+            return PPS_FRAME;
+        } else if (data[4] == 0x65) {
+            // LOGD("I frame");
+            return I_FRAME;
+        } else {
+            // LOGD("P frame start");
+            return D_START_PACKET;
+        }
+    } else {
+        // LOGD("D frame rest");
+        return D_REST_PACKET;
+    }
+
+    /*
+    if (if_frame_started(data)) {
+        if ((data[4] == 0x67 && packetLen == 20)) {
             return SPS_FRAME;
         } else if (packetLen == 8 && (data[4] == 0x68)) {
             return PPS_FRAME;
@@ -23,6 +43,7 @@ frame_type_e UDP_Receiver::get_frame_type(char *data, int packetLen) {
     } else {
         return D_REST_PACKET;
     }
+    */
 }
 
 bool UDP_Receiver::if_frame_started(char *data) {
@@ -36,12 +57,14 @@ bool UDP_Receiver::if_frame_started(char *data) {
 
 void *rev_thread(void *args) {
     char packetBuf[UDP_PACKET_LEN];   // udp包最大是1400
+    memset(packetBuf, 0, UDP_PACKET_LEN);
     int recvLen;
     int dataFrameLen = 0;
     // 强转为receiver对象指针, 为了取到sockfd
     auto *receiver = static_cast<UDP_Receiver *>(args);
 
     char dataFrameBuf[DATA_BUFFER_LEN];
+    memset(dataFrameBuf, 0, DATA_BUFFER_LEN);
 
     while (true) {
         // 读取udp数据包
@@ -64,27 +87,29 @@ void *rev_thread(void *args) {
                 if (!receiver->ifStartRender) {
                     LOGD("Start render");
                     receiver->ifStartRender = true;
+
+                } else {
+                    // LOGD("SFrame insert buffered data into packet queue");
+                    // 将已经缓存的数据帧插入到队列中
+                    receiver->insert_data_into_players_packet_queue(dataFrameBuf, dataFrameLen);
                 }
-                LOGD("SFrame insert buffered data into packet queue");
-                // 将已经缓存的数据帧插入到队列中
-                receiver->insert_data_into_players_packet_queue(dataFrameBuf, dataFrameLen);
 
                 dataFrameLen = 0;
                 // 加入缓存, 跟I帧一起发送
                 memcpy(&dataFrameBuf[dataFrameLen], packetBuf, recvLen);
                 dataFrameLen = recvLen;
 
-            } else if (PPS_FRAME == frameType) {
+            } else if (PPS_FRAME == frameType && receiver->ifStartRender) {
                 // 加入缓存, 跟I帧一起发送
                 memcpy(&dataFrameBuf[dataFrameLen], packetBuf, recvLen);
                 dataFrameLen = dataFrameLen + recvLen;
-            } else if (I_FRAME == frameType) {
+            } else if (I_FRAME == frameType && receiver->ifStartRender) {
 
                 // 加入缓存
                 memcpy(&dataFrameBuf[dataFrameLen], packetBuf, recvLen);
                 dataFrameLen = dataFrameLen + recvLen;
 
-            } else if (D_START_PACKET == frameType) {
+            } else if (D_START_PACKET == frameType && receiver->ifStartRender) {
 
                 // D帧开始了, 就把之前的先发送
                 receiver->insert_data_into_players_packet_queue(dataFrameBuf, dataFrameLen);
@@ -94,7 +119,7 @@ void *rev_thread(void *args) {
                 memcpy(&dataFrameBuf[dataFrameLen], packetBuf, recvLen);
                 dataFrameLen = recvLen;
 
-            } else if (D_REST_PACKET == frameType) {
+            } else if (D_REST_PACKET == frameType && receiver->ifStartRender) {
                 // 数据帧的中间部分, 直接缓存
                 memcpy(&dataFrameBuf[dataFrameLen], packetBuf, recvLen);
                 dataFrameLen = dataFrameLen + recvLen;
@@ -196,6 +221,7 @@ void UDP_Receiver::insert_data_into_players_packet_queue(char *data, int dataLen
         packet->size = dataLen;
         packet->stream_index = 0;
 
+        // LOGD("dataLen:%d", dataLen);
 
         this->player->videoChannel->packet_decode(packet);
 

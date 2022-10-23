@@ -30,6 +30,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        supportActionBar?.hide()
+
         mSurfaceView = binding.videoSurfaceView
 
         ktplayer = KTPlayer()

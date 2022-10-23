@@ -66,6 +66,10 @@ void VideoChannel::video_play() {
 void VideoChannel::packet_decode(AVPacket *packet) {
 
     int ret = 0;
+    struct timeval te;
+    gettimeofday(&te, NULL); // get current time
+    long long start = te.tv_sec * 1000LL + te.tv_usec / 1000; // calculate milliseconds
+
     // 发送到ffmpeg的缓冲区
     ret = avcodec_send_packet(codecContext, packet);
     if (ret < 0) {
@@ -76,7 +80,7 @@ void VideoChannel::packet_decode(AVPacket *packet) {
         return;
     }
 
-    LOGD("packet sent ready to receive frame");
+    // LOGD("packet sent ready to receive frame");
     AVFrame *frame = av_frame_alloc();
     ret = avcodec_receive_frame(codecContext, frame);
     if (ret == AVERROR(EAGAIN)) {
@@ -92,7 +96,10 @@ void VideoChannel::packet_decode(AVPacket *packet) {
 
     frames.insert_to_queue(frame);
 
-    LOGD("frame been insert");
+    gettimeofday(&te, NULL); // get current time
+    long long end = te.tv_sec * 1000LL + te.tv_usec / 1000; // calculate milliseconds
+    // LOGD("frame been insert");
+    LOGD("decode frame cost %lld ms", end - start);
 }
 
 // read file的消费者, 同时是play的生产者, 双重身份.
@@ -131,7 +138,7 @@ void VideoChannel::video_decode() {
             continue;
         }
 
-        //avcodec_decode_video2(codecContext, frame, &got_frame, packet);
+        // avcodec_decode_video2(codecContext, frame, &got_frame, packet);
 
         LOGD("packet sent");
         AVFrame *frame = av_frame_alloc();

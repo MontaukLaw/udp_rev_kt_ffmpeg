@@ -5,7 +5,7 @@
 
 #define PORT     54322
 #define UDP_PACKET_LEN  1400
-#define DATA_BUFFER_LEN 300000
+#define DATA_BUFFER_LEN 500000
 
 typedef enum {
     SPS_FRAME = 1,

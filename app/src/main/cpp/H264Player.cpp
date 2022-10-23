@@ -20,27 +20,22 @@ void H264Player::init_decode_context(void) {
     int ret = 0;
     AVCodec *codec = nullptr;
 
-    LOGD("init_decode_context 1");
-
     codec = avcodec_find_decoder(AV_CODEC_ID_H264);
 
     if (codec == nullptr) {
         LOGE("JNIEncoder: Can not find codec");
         return;
     }
-    LOGD("init_decode_context 2");
 
     codecCtx = avcodec_alloc_context3(codec);
     if (codecCtx == nullptr) {
         LOGE("JNIEncoder: Can not alloc new video_codec_ctx");
         return;
     }
-    LOGD("init_decode_context 3");
 
     if (avcodec_open2(codecCtx, codec, nullptr) < 0) {
         LOGD("JNIEncoder: Failed to open decoder!");
     }
-    LOGD("init_decode_context 4");
 
     codecCtx->pix_fmt = AV_PIX_FMT_YUVJ420P;
     codecCtx->codec_type = AVMEDIA_TYPE_VIDEO;
